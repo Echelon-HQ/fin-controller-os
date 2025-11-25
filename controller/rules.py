@@ -8,11 +8,20 @@ from controller.models import Account, RuleConfig, RuleEvaluation, Obligation
 from controller.classification import EnvelopeSummary
 from collections import defaultdict
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 def evaluate_account_minimum_balance_rules(
     accounts: Dict[str, Account],
     rules: Dict[str, RuleConfig],
 ) -> List[RuleEvaluation]:
+    logger.debug(
+        "Evaluating account_minimum_balance rules for %d accounts and %d rules",
+        len(accounts),
+        len(rules),
+    )
+
     evaluations: List[RuleEvaluation] = []
     for rule in rules.values():
         if rule.type != "account_minimum_balance":
@@ -21,11 +30,24 @@ def evaluate_account_minimum_balance_rules(
         account_id = rule.parameters["account_id"]
         if account_id not in accounts:
             # Ignore rules for accounts not present in this context (user)
+            logger.debug(
+                "Skipping rule '%s' for unknown account_id '%s'",
+                rule.id,
+                account_id,
+            )
             continue
 
         minimum_balance = Decimal(str(rule.parameters["minimum_balance"]))
         account = accounts[account_id]
         current_balance = account.current_balance
+
+        logger.debug(
+            "Rule '%s': account '%s' balance=%s minimum_required=%s",
+            rule.id,
+            account_id,
+            current_balance,
+            minimum_balance,
+        )
 
         if current_balance < minimum_balance:
             status = "violation"
@@ -50,13 +72,31 @@ def evaluate_account_minimum_balance_rules(
                 severity=rule.severity,
             )
         )
+
+        logger.debug(
+            "Rule '%s' evaluation result: status=%s",
+            rule.id,
+            status,
+        )
+
+    logger.debug(
+        "Completed account_minimum_balance evaluation: %d evaluations",
+        len(evaluations),
+    )
     return evaluations
+
 
 
 def evaluate_envelope_budget_limit_rules(
     envelope_summaries: Dict[str, EnvelopeSummary],
     rules: Dict[str, RuleConfig],
 ) -> List[RuleEvaluation]:
+    logger.debug(
+        "Evaluating envelope_budget_limit rules for %d envelopes and %d rules",
+        len(envelope_summaries),
+        len(rules),
+    )
+
     evaluations: List[RuleEvaluation] = []
     for rule in rules.values():
         if rule.type != "envelope_budget_limit":
@@ -65,31 +105,41 @@ def evaluate_envelope_budget_limit_rules(
         params = rule.parameters
         envelope_id = params["envelope_id"]
         if envelope_id not in envelope_summaries:
-            # Ignore rules for envelopes not present in this context (user)
+            logger.debug(
+                "Skipping rule '%s' for unknown envelope_id '%s'",
+                rule.id,
+                envelope_id,
+            )
             continue
 
         summary = envelope_summaries[envelope_id]
         envelope = summary.envelope
 
-        # Determine limit style:
-        # - Phase 1: max_ratio only (limit = envelope.budget_amount * max_ratio)
-        # - Phase 2: optional budget_amount override + optional max_ratio
         max_ratio_raw = params.get("max_ratio")
         budget_amount_raw = params.get("budget_amount")
 
-        # Base budget for the rule
+        # Base budget
         if budget_amount_raw is not None:
             limit_budget = Decimal(str(budget_amount_raw))
         else:
             limit_budget = envelope.budget_amount
 
-        # How much of that budget is allowed (ratio)
+        # Allowed ratio
         if max_ratio_raw is not None:
             limit_ratio = Decimal(str(max_ratio_raw))
         else:
-            limit_ratio = Decimal("1.0")  # default: can use full limit_budget
+            limit_ratio = Decimal("1.0")
 
         spent = summary.total_spend
+
+        logger.debug(
+            "Rule '%s' for envelope '%s': spent=%s limit_budget=%s limit_ratio=%s",
+            rule.id,
+            envelope_id,
+            spent,
+            limit_budget,
+            limit_ratio,
+        )
 
         if limit_budget == 0:
             status = "warning"
@@ -117,7 +167,7 @@ def evaluate_envelope_budget_limit_rules(
                     f"within the allowed {allowed_spend:.2f} "
                     f"(limit_budget={limit_budget:.2f}, limit_ratio={limit_ratio:.2f})."
                 )
-            threshold = limit_ratio  # we still record ratio as the threshold
+            threshold = limit_ratio
 
         evaluations.append(
             RuleEvaluation(
@@ -129,7 +179,20 @@ def evaluate_envelope_budget_limit_rules(
                 severity=rule.severity,
             )
         )
+
+        logger.debug(
+            "Rule '%s' evaluation result for envelope '%s': status=%s",
+            rule.id,
+            envelope_id,
+            status,
+        )
+
+    logger.debug(
+        "Completed envelope_budget_limit evaluation: %d evaluations",
+        len(evaluations),
+    )
     return evaluations
+
 
 
 
@@ -140,24 +203,9 @@ def evaluate_obligation_buffer_rules(
 ) -> List[RuleEvaluation]:
     """
     Evaluate rules of type 'obligation_buffer_check' using a time buffer window.
-
-    RuleConfig.parameters:
-        - lookahead_days: int (default: 7)
-        - buffer_ratio: float/decimal in [0, 1] (default: 0.2)
-
-    Obligation expectations:
-        - due_date: date (if None, we skip time-based evaluation)
-        - status: 'pending' | 'satisfied' | 'violated' | 'dismissed' (etc.)
-        - metadata.get("progress_ratio"): 0.0–1.0 (optional, default 0.0)
-
-    Logic:
-        - If obligation is 'satisfied' or 'dismissed' -> ignored.
-        - If due_date < today and not satisfied -> status 'violation'.
-        - If 0 <= days_until_due <= lookahead_days AND
-              progress_ratio < (1 - buffer_ratio)
-          -> status 'warning'.
-        - Otherwise -> status 'pass'.
     """
+    logger.debug("Starting obligation buffer rule evaluation for date=%s", today)
+
     evaluations: List[RuleEvaluation] = []
 
     for rule in rules.values():
@@ -171,13 +219,25 @@ def evaluate_obligation_buffer_rules(
 
         required_progress = Decimal("1") - buffer_ratio
 
+        logger.debug(
+            "Evaluating rule '%s': lookahead_days=%s buffer_ratio=%s required_progress=%s",
+            rule.id, lookahead_days, buffer_ratio, required_progress
+        )
+
         for obl in obligations.values():
+            logger.debug(
+                "Checking obligation '%s': status=%s due_date=%s metadata=%s",
+                obl.id, obl.status, obl.due_date, obl.metadata
+            )
+
             # Skip resolved obligations
             if obl.status in ("satisfied", "dismissed"):
+                logger.debug("Skipping obligation '%s' (status=%s)", obl.id, obl.status)
                 continue
 
             # Must have a due date for buffer logic
             if obl.due_date is None:
+                logger.debug("Skipping obligation '%s' (no due_date)", obl.id)
                 continue
 
             days_until_due = (obl.due_date - today).days
@@ -188,12 +248,23 @@ def evaluate_obligation_buffer_rules(
             except Exception:
                 progress_ratio = Decimal("0")
 
+            logger.debug(
+                "Obligation '%s': days_until_due=%s progress_ratio=%s",
+                obl.id, days_until_due, progress_ratio
+            )
+
+            # Determine status
             if days_until_due < 0:
                 status = "violation"
                 message = (
                     f"Obligation '{obl.title}' is past due "
                     f"(due {obl.due_date.isoformat()}) and not satisfied."
                 )
+                logger.debug(
+                    "Obligation '%s' marked as VIOLATION (past due)",
+                    obl.id
+                )
+
             elif 0 <= days_until_due <= lookahead_days and progress_ratio < required_progress:
                 status = "warning"
                 message = (
@@ -201,11 +272,20 @@ def evaluate_obligation_buffer_rules(
                     f"with progress ratio {progress_ratio:.2f}, below required "
                     f"{required_progress:.2f}."
                 )
+                logger.debug(
+                    "Obligation '%s' marked as WARNING (within buffer and insufficient progress)",
+                    obl.id
+                )
+
             else:
                 status = "pass"
                 message = (
                     f"Obligation '{obl.title}' is not at risk within the next "
                     f"{lookahead_days} day(s)."
+                )
+                logger.debug(
+                    "Obligation '%s' marked as PASS",
+                    obl.id
                 )
 
             evaluations.append(
@@ -219,7 +299,9 @@ def evaluate_obligation_buffer_rules(
                 )
             )
 
+    logger.debug("Completed obligation buffer evaluation (%s evaluations)", len(evaluations))
     return evaluations
+
 
 
 def evaluate_all_rules(

@@ -10,6 +10,9 @@ from controller.models import (
     Recommendation,
 )
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 # -----------------------------------------------------------------------------
 # Recommendation Context (Phase 2)
@@ -83,40 +86,52 @@ def generate_recommendations(
 ) -> List[Recommendation]:
     """
     Takes rule evaluations and produces a sorted list of Recommendation objects.
-
-    Rules:
-      - Pass evaluations are ignored.
-      - Violations and Warnings generate recommendations.
-      - severity controls the priority.
-      - rule family determines the action type.
     """
+
+    logger.debug(
+        "Generating recommendations from %d rule evaluations",
+        len(rule_evaluations),
+    )
 
     output: List[Recommendation] = []
 
     for r in rule_evaluations:
         if r.status == "pass":
+            logger.debug(
+                "Skipping rule '%s' with status 'pass' (no recommendation)",
+                r.rule_id,
+            )
             continue  # ignore successful rule checks
 
         action = _map_rule_to_action(r)
         priority = _priority_from_severity(r.severity)
 
-        # A simple readable title
-        title = ""
+        logger.debug(
+            "Rule '%s' (status=%s, severity=%s) mapped to action '%s' with priority=%s",
+            r.rule_id,
+            r.status,
+            r.severity,
+            action,
+            priority,
+        )
+
         if r.status == "violation":
             title = f"Action required: {action.replace('_', ' ').title()}"
         elif r.status == "warning":
             title = f"Warning: {action.replace('_', ' ').title()}"
+        else:
+            title = action.replace("_", " ").title()
 
         rec = Recommendation(
             id=str(uuid4()),
-            user_id="user_001",   # Replace if multi-user context later
+            user_id="user_001",   # TODO: pass real user_id if multi-user
             rule_id=r.rule_id,
             obligation_id=None,
             title=title,
-            message=r.message,     # direct carry-over from RuleEvaluation
+            message=r.message,
             severity=r.severity,
             category=action,
-            account_id=None,       # optionally populate using metadata
+            account_id=None,
             envelope_id=None,
             metadata={
                 "rule_id": r.rule_id,
@@ -128,6 +143,10 @@ def generate_recommendations(
         )
 
         output.append(rec)
+
+    logger.debug(
+        "Generated %d recommendations", len(output)
+    )
 
     # Sort final list by priority
     output.sort(key=lambda rec: rec.metadata["priority"])

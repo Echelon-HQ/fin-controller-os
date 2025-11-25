@@ -11,6 +11,10 @@ from uuid import uuid4
 from controller.models import ControllerLogEntry
 
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 # Default location for the controller log JSONL file
 DEFAULT_LOG_PATH = Path("log") / "controller_log.jsonl"
 
@@ -65,11 +69,15 @@ def append_log_entry(
     # Ensure parent directory exists (e.g. "log/")
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Convert dataclass to dict, then to JSON with custom serializer.
     entry_dict = asdict(entry)
     line = json.dumps(entry_dict, default=_json_default)
 
-    # Append as a single JSON line
+    logger.debug(
+        "Appending ControllerLogEntry to %s at %s",
+        log_path,
+        entry.timestamp.isoformat(),
+    )
+
     with log_path.open("a", encoding="utf-8") as f:
         f.write(line + "\n")
 
