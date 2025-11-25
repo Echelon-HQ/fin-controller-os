@@ -1,0 +1,6 @@
+transaction_id,user_id,account_id,date,amount,currency,description,raw_category
+txn_001,user_001,personal_checking,2025-11-15,-1200,USD,Rent Payment Apartment,rent
+txn_002,user_001,personal_checking,2025-11-16,-45.5,USD,Grab Ride - Airport,transport
+txn_003,user_001,personal_checking,2025-11-16,-89.3,USD,Restaurant Dinner,dining
+txn_004,user_002,business_checking,2025-11-15,-150,USD,Office Lunch Meeting,dining
+txn_005,user_001,savings,2025-11-10,5000,USD,Salary Deposit,income

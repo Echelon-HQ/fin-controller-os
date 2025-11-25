@@ -1,0 +1,25 @@
+[
+    {
+        "id": "obl_min_balance_personal",
+        "user_id": "user_001",
+        "type": "min_balance",
+        "title": "Maintain minimum balance in Personal Checking",
+        "description": "Personal Checking account should not fall below 2,000 USD.",
+        "account_id": "personal_checking",
+        "amount": 2000,
+        "currency": "USD",
+        "status": "pending"
+    },
+    {
+        "id": "obl_rent_monthly",
+        "user_id": "user_001",
+        "type": "envelope_budget",
+        "title": "Rent envelope must be fully funded",
+        "description": "Ensure rent budget is met by the 1st of each month.",
+        "envelope_id": "rent",
+        "amount": 1200,
+        "currency": "USD",
+        "due_date": "2025-12-01",
+        "status": "pending"
+    }
+]

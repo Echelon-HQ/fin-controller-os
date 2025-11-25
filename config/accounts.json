@@ -1,0 +1,26 @@
+[
+  {
+    "account_id": "personal_checking",
+    "user_id": "user_001",
+    "name": "Personal Checking",
+    "type": "checking",
+    "currency": "USD",
+    "current_balance": "5000.00"
+  },
+  {
+    "account_id": "savings",
+    "user_id": "user_001",
+    "name": "Savings Account",
+    "type": "savings",
+    "currency": "USD",
+    "current_balance": "15000.00"
+  },
+  {
+    "account_id": "business_checking",
+    "user_id": "user_002",
+    "name": "Business Checking",
+    "type": "checking",
+    "currency": "USD",
+    "current_balance": "12000.00"
+  }
+]

@@ -1,0 +1,67 @@
+[
+    {
+        "id": "rule_min_balance_personal",
+        "type": "account_minimum_balance",
+        "user_id": "user_001",
+        "title": "Minimum Balance – Personal Checking",
+        "description": "Ensure Personal Checking never drops below 2,000 USD.",
+        "account_id": "personal_checking",
+        "threshold_amount": 2000,
+        "currency": "USD",
+        "severity": "warning"
+    },
+    {
+        "id": "rule_min_balance_business",
+        "type": "account_minimum_balance",
+        "user_id": "user_001",
+        "title": "Minimum Balance – Business Checking",
+        "description": "Ensure Business Checking never drops below 5,000 USD.",
+        "account_id": "business_checking",
+        "threshold_amount": 5000,
+        "currency": "USD",
+        "severity": "warning"
+    },
+    {
+        "id": "rule_rent_limit",
+        "type": "envelope_budget_limit",
+        "user_id": "user_001",
+        "title": "Rent Envelope Budget Limit",
+        "description": "Enforces monthly rent spending limit.",
+        "envelope_id": "rent",
+        "budget_amount": 1200,
+        "currency": "USD",
+        "severity": "critical"
+    },
+    {
+        "id": "rule_transport_limit",
+        "type": "envelope_budget_limit",
+        "user_id": "user_001",
+        "title": "Transport Envelope Budget Limit",
+        "description": "Monitor monthly transport spending.",
+        "envelope_id": "transport",
+        "budget_amount": 200,
+        "currency": "USD",
+        "severity": "info"
+    },
+    {
+        "id": "rule_discretionary_limit",
+        "type": "envelope_budget_limit",
+        "user_id": "user_001",
+        "title": "Discretionary Envelope Budget Limit",
+        "description": "Ensure discretionary spending stays within limit.",
+        "envelope_id": "discretionary",
+        "budget_amount": 400,
+        "currency": "USD",
+        "severity": "info"
+    },
+    {
+        "id": "rule_obligation_buffer_check",
+        "type": "obligation_buffer_check",
+        "user_id": "user_001",
+        "title": "Obligation Buffer Check",
+        "description": "Detect obligations that are likely to be violated soon.",
+        "lookahead_days": 7,
+        "buffer_ratio": 0.2,
+        "severity": "warning"
+    }
+]

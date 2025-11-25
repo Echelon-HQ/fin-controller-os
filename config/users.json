@@ -1,0 +1,20 @@
+[
+  {
+    "user_id": "user_001",
+    "name": "Kamarin Lee",
+    "accounts": [
+      "user1_personal_checking",
+      "user1_business_checking"
+    ],
+    "envelopes": ["rent", "transport"]
+  },
+  {
+    "user_id": "user_002",
+    "name": "Tanvir Ahmed Bhuiyan",
+    "accounts": [
+      "user2_personal_checking",
+      "user2_savings"
+    ],
+    "envelopes": ["discretionary"]
+  }
+]

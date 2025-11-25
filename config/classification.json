@@ -1,0 +1,8 @@
+{
+  "rent": "rent",
+  "apartment": "rent",
+  "grab": "transport",
+  "uber": "transport",
+  "restaurant": "discretionary",
+  "dining": "discretionary"
+}

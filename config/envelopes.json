@@ -1,0 +1,29 @@
+[
+  {
+    "envelope_id": "rent",
+    "user_id": "user_001",
+    "name": "Rent and Housing",
+    "period": "monthly",
+    "budget_amount": "1200.00",
+    "budget_currency": "USD",
+    "priority": "essential"
+  },
+  {
+    "envelope_id": "transport",
+    "user_id": "user_001",
+    "name": "Transport",
+    "period": "monthly",
+    "budget_amount": "200.00",
+    "budget_currency": "USD",
+    "priority": "essential"
+  },
+  {
+    "envelope_id": "discretionary",
+    "user_id": "user_002",
+    "name": "Discretionary Spending",
+    "period": "monthly",
+    "budget_amount": "400.00",
+    "budget_currency": "USD",
+    "priority": "discretionary"
+  }
+]
