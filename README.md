@@ -1,20 +1,20 @@
 # Financial Controller
 
-A small, well-structured, configuration-driven financial controller engine and a minimal orchestration layer.
-This repository contains a deterministic engine (ingestion, classification, envelope aggregation, rules, recommendations,
-digest generation, and an append-only controller log) and a vendor-neutral orchestration layer for building agents.
+A deterministic, configuration-driven financial controller engine and a vendor-neutral orchestration layer.
 
 ---
 
-## Status
+## Quick overview
 
-- Phase 1: Core ingestion, classification, envelope aggregation, minimal rules engine, `daily_run` (console).
-- Phase 2: Obligations, extended rules, recommendation engine, daily digest, append-only JSONL controller log.
-- Phase 3: Orchestration adapter + tool schemas and a simple OpenAI-based example runner (agent glue lives in `orchestration/`).
+- **Phase 1**: ingestion, classification, envelope aggregation, minimal rules engine, `daily_run` console runner.
+- **Phase 2**: obligations, obligation buffer rules, recommendation engine, daily digest, append-only JSONL controller log.
+- **Phase 3**: orchestration adapter with tool schemas and an example OpenAI agent runner (tool-style functions).
 
 ---
 
 ## Repository layout
+
+
 ```
 financial_controller/
 
@@ -129,6 +129,7 @@ python -m unittest discover -s tests
 - A minimal OpenAI-based runner is included as orchestration/agent_runner.py — it requires openai and python-dotenv and an OPENAI_API_KEY.
 
 > Note: Phase 3 is a glue layer only — it never performs numeric logic. The engine (controller/) is the single source of truth.
+
 
 
 
