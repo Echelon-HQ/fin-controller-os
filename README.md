@@ -16,8 +16,8 @@ digest generation, and an append-only controller log) and a vendor-neutral orche
 
 ## Repository layout
 financial_controller/
-├─ controller/
 
+├─ controller/
 │ ├─ init.py
 
 │ ├─ models.py
@@ -125,4 +125,5 @@ python -m unittest discover -s tests
 The orchestration/ package contains vendor-neutral tool schemas and a controller adapter.
 A minimal OpenAI-based runner is included as orchestration/agent_runner.py — it requires openai and python-dotenv and an OPENAI_API_KEY.
 Note: Phase 3 is a glue layer only — it never performs numeric logic. The engine (controller/) is the single source of truth.
+
 
