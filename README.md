@@ -17,37 +17,69 @@ digest generation, and an append-only controller log) and a vendor-neutral orche
 ## Repository layout
 financial_controller/
 ├─ controller/
+
 │ ├─ init.py
+
 │ ├─ models.py
+
 │ ├─ config_loader.py
+
 │ ├─ ingestion.py
+
 │ ├─ classification.py
+
 │ ├─ rules.py
+
 │ ├─ recommendations.py
+
 │ ├─ digest.py
+
 │ ├─ controller_log.py
+
 │ └─ daily_run.py
+
 ├─ orchestration/
+
 │ ├─ init.py
+
 │ ├─ tool_schemas.py
+
 │ ├─ controller_adapter.py
+
 │ ├─ agent_prompts.py
+
 │ └─ agent_runner.py
+
 ├─ config/
+
 │ ├─ accounts.json
+
 │ ├─ envelopes.json
+
 │ ├─ obligations.json
+
 │ ├─ rules.json
+
 │ └─ classification.json
+
 ├─ data/
+
 │ └─ transactions.csv
+
 ├─ log/
+
 │ └─ controller_log.jsonl
+
 ├─ tests/
+
 │ ├─ test_ingestion.py
+
 │ ├─ test_rules.py
+
 │ ├─ test_obligations.py
+
 │ └─ test_recommendations_and_digest.py
+
 └─ README.md
 
 ---
@@ -93,3 +125,4 @@ python -m unittest discover -s tests
 The orchestration/ package contains vendor-neutral tool schemas and a controller adapter.
 A minimal OpenAI-based runner is included as orchestration/agent_runner.py — it requires openai and python-dotenv and an OPENAI_API_KEY.
 Note: Phase 3 is a glue layer only — it never performs numeric logic. The engine (controller/) is the single source of truth.
+
