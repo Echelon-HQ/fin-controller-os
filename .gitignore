@@ -1,0 +1,6 @@
+# Ignore Python artifacts 
+__pycache__/ 
+*.pyc 
+log/*.jsonl 
+.venv/ 
+venv/ 
