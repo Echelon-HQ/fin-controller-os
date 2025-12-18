@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
+from interface.chat import router as chat_router
 
 from interface.schemas import (
     HealthResponse,
@@ -38,6 +39,8 @@ app = FastAPI(
     description="HTTP interface for the Financial Controller engine",
     version="1.0.0",
 )
+app.include_router(chat_router)
+
 
 
 # ------------------------------------------------------------------
