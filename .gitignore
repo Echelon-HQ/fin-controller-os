@@ -1,6 +1,24 @@
-# Ignore Python artifacts 
-__pycache__/ 
-*.pyc 
-log/*.jsonl 
-.venv/ 
-venv/ 
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv
+venv/
+env/
+
+# Environment Secrets
+.env
+
+# Financial Data (Keep folder structure, ignore content)
+data/*
+!data/.gitkeep
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Logs
+log/*
+!log/.gitkeep
+
+# Snapshots and Temp Files
+*.tar.gz
+.DS_Store
