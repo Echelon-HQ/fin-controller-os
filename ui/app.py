@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 from pathlib import Path
 from datetime import date
 from orchestration.controller_adapter import (
@@ -8,9 +9,13 @@ from orchestration.controller_adapter import (
 )
 
 # ---------------------------------------------------------------------
-# Paths
+# Paths (Updated for Docker)
 # ---------------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parents[1]
+# If running in Docker (APP_HOME is set), use /app. Otherwise, use relative path.
+if os.getenv("APP_HOME"):
+    BASE_DIR = Path(os.getenv("APP_HOME"))
+else:
+    BASE_DIR = Path(__file__).resolve().parents[1]
 
 CONFIG_DIR = BASE_DIR / "config"
 DATA_DIR = BASE_DIR / "data"
@@ -88,73 +93,28 @@ with tabs[0]:
             log_dir=LOG_DIR,
             as_of_date_str=selected_date.isoformat(),
         )
-
-        st.subheader(f"Status: {status_badge(result['status_label'])}")
-
-        # ----------------------------
-        # Accounts
-        # ----------------------------
-        st.markdown("### 💳 Accounts")
-        cols = st.columns(len(result["accounts_summary"]))
-        for col, (acc, bal) in zip(cols, result["accounts_summary"].items()):
-            col.metric(acc, bal)
-
-        # ----------------------------
-        # Envelopes
-        # ----------------------------
-        st.markdown("### 📦 Envelopes")
-        for env_id in result["envelopes_remaining"]:
-            spent = result["envelopes_spend"].get(env_id, "0")
-            remaining = result["envelopes_remaining"][env_id]
-            st.write(f"**{env_id}** — Spent: {spent} | Remaining: {remaining}")
-
-        # ----------------------------
-        # Rules
-        # ----------------------------
-        st.markdown("### ⚠️ Rule Evaluations")
-        for ev in result["rule_evaluations"]:
-            msg = ev["message"]
-            if ev["status"] == "violation":
-                st.error(msg)
-            elif ev["status"] == "warning":
-                st.warning(msg)
-            else:
-                st.info(msg)
-
-        # ----------------------------
-        # Recommendations
-        # ----------------------------
-        st.markdown("### 🧭 Recommended Actions")
-
-        recommendations = sorted(
-            result["recommendations"],
-            key=lambda r: normalize_priority(r.get("priority")),
-        )
-
-        if not recommendations:
-            st.success("No actions required for this day.")
-        else:
-            for rec in recommendations:
-                priority = normalize_priority(rec.get("priority"))
-
-                if priority == 1:
-                    container = st.error
-                    badge = "🔴 Critical"
-                elif priority == 2:
-                    container = st.warning
-                    badge = "🟠 Important"
+        if result.get("status") == "success":
+            st.success("Daily digest run successfully!")
+            
+            # Display digest content if available
+            digest = result.get("digest", {})
+            if digest:
+                st.subheader("📝 Digest Summary")
+                st.markdown(f"**Date:** {digest.get('date')}")
+                
+                # Alerts
+                alerts = digest.get("alerts", [])
+                if alerts:
+                    st.warning(f"Found {len(alerts)} Alerts")
+                    for a in alerts:
+                        st.write(f"- {a}")
                 else:
-                    container = st.info
-                    badge = "🟢 Optional"
+                    st.info("No alerts generated.")
 
-                with container(f"{badge} — {rec.get('action_type', 'Action')}"):
-                    st.markdown(f"**What to do:** {rec.get('description', '')}")
+            st.json(result)
+        else:
+            st.error(f"Error: {result.get('message')}")
 
-                    details = rec.get("details") or {}
-                    if details:
-                        st.markdown("**Details:**")
-                        for k, v in details.items():
-                            st.write(f"- {k}: {v}")
 
 # =====================================================================
 # WEEKLY TAB
@@ -173,17 +133,12 @@ with tabs[1]:
             log_dir=LOG_DIR,
             week_ending_date_str=week_end.isoformat(),
         )
+        if result.get("status") == "success":
+            st.success("Weekly summary generated!")
+            st.json(result)
+        else:
+            st.error(f"Error: {result.get('message')}")
 
-        st.subheader(f"Overall Status: {status_badge(result['overall_status_label'])}")
-        st.write(result["weekly_narrative"])
-
-        st.markdown("### 📊 Average Daily Spend per Envelope")
-        for env, avg in result["average_daily_spend_per_envelope"].items():
-            st.write(f"{env}: {avg}")
-
-        st.markdown("### 🚨 Rule Violations (Count)")
-        for rule_id, count in result["rule_violation_counts"].items():
-            st.write(f"{rule_id}: {count}")
 
 # =====================================================================
 # SCENARIO TAB
@@ -191,38 +146,24 @@ with tabs[1]:
 with tabs[2]:
     st.header("Scenario Simulation")
 
-    sim_date = st.date_input(
-        "Scenario date",
-        value=date.today(),
-        key="scenario_date",
-    )
+    st.markdown("Simulate a transaction to see how it affects budget/rules.")
 
-    st.markdown("#### One-off Planned Spend")
-    amount = st.text_input("Amount (USD)", value="")
-    envelope_id = st.text_input("Envelope ID", value="")
-    description = st.text_input("Description", value="")
+    col1, col2 = st.columns(2)
+    with col1:
+        s_amount = st.number_input("Amount", value=100.0)
+        s_currency = st.selectbox("Currency", ["USD", "EUR", "GBP"], index=0)
+    with col2:
+        s_desc = st.text_input("Description", "Grocery shopping")
+        s_date = st.date_input("Date", value=date.today(), key="scen_date")
 
-    if st.button("Simulate Scenario"):
-        one_off = None
-        if amount and envelope_id:
-            one_off = {
-                "amount": amount,
-                "envelope_id": envelope_id,
-                "description": description or "Planned spend",
-            }
-
+    if st.button("Simulate Transaction"):
         result = tool_simulate_scenario_impl(
             config_dir=CONFIG_DIR,
-            data_dir=DATA_DIR,
-            as_of_date_str=sim_date.isoformat(),
-            one_off_spend=one_off,
+            amount=float(s_amount),
+            currency=s_currency,
+            description=s_desc,
+            date_str=s_date.isoformat(),
         )
-
-        st.markdown("### 📦 Baseline Remaining Budgets")
-        st.json(result["baseline_envelopes_remaining"])
-
-        st.markdown("### 🧪 Scenario Remaining Budgets")
-        st.json(result["scenario_envelopes_remaining"])
-
-        st.markdown("### 📝 Impact Summary")
-        st.write(result["impact_summary"])
+        
+        st.subheader("Simulation Results")
+        st.json(result)
