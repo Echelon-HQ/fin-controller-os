@@ -1,0 +1,19 @@
+services:
+  ui:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: fin-controller-ui
+    ports:
+      - "8501:8501"
+    volumes:
+      - ../data:/app/data
+      - ../config:/app/config
+      - ../ui:/app/ui
+    env_file:
+      - ../.env
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+    command: streamlit run ui/app.py
+    depends_on:
+      - ollama
