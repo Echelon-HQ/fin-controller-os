@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import os
 from pathlib import Path
 from datetime import datetime, date
 from decimal import Decimal
@@ -7,29 +8,48 @@ from typing import Dict, List
 from dataclasses import dataclass
 from controller.models import User, Account, Envelope, RuleConfig, Obligation
 
+# --- DOCKER-FRIENDLY PATH LOGIC ---
+# If running in Docker (APP_HOME is set), use /app. Otherwise, use relative path.
+if os.getenv("APP_HOME"):
+    BASE_DIR = Path(os.getenv("APP_HOME"))
+else:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Define the global CONFIG_DIR based on the environment
+DEFAULT_CONFIG_DIR = BASE_DIR / "config"
+DATA_DIR = BASE_DIR / "data"
+# ----------------------------------
+
 @dataclass
 class ControllerConfig:
-    users: Dict[str, User]  # key: user_id
-    accounts: Dict[str, Account]  # key: account_id
-    envelopes: Dict[str, Envelope]  # key: envelope_id
-    rules: Dict[str, RuleConfig]  # key: rule_id
-    obligations: Dict[str, Obligation]  # key: obligation_id (Obligation.id) - New Phase 2
+    users: Dict[str, User]
+    accounts: Dict[str, Account]
+    envelopes: Dict[str, Envelope]
+    rules: Dict[str, RuleConfig]
+    obligations: Dict[str, Obligation]
     classification_map: Dict[str, str]
 
 def _load_json(path: Path):
     if not path.exists():
-        raise FileNotFoundError(f"Configuration file not found: {path}")
+        return [] # Return empty list/dict if file missing to prevent crash
+        # Alternatively: raise FileNotFoundError(f"Configuration file not found: {path}")
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
 
-def load_controller_config(config_dir: Path) -> ControllerConfig:
+def load_controller_config(config_dir: Path = None) -> ControllerConfig:
+    """
+    Load configuration. Defaults to the Docker-aware DEFAULT_CONFIG_DIR if not provided.
+    """
+    if config_dir is None:
+        config_dir = DEFAULT_CONFIG_DIR
+
     # Load raw JSON files
-    users_raw = _load_json(config_dir / "users.json")
-    accounts_raw = _load_json(config_dir / "accounts.json")
-    envelopes_raw = _load_json(config_dir / "envelopes.json")
-    rules_raw = _load_json(config_dir / "rules.json")
-    obligations_raw = _load_json(config_dir / "obligations.json")  # NEW phase 2
-    classification_raw = _load_json(config_dir / "classification.json")
+    users_raw = _load_json(config_dir / "users.json") or []
+    accounts_raw = _load_json(config_dir / "accounts.json") or []
+    envelopes_raw = _load_json(config_dir / "envelopes.json") or []
+    rules_raw = _load_json(config_dir / "rules.json") or []
+    obligations_raw = _load_json(config_dir / "obligations.json") or []
+    classification_raw = _load_json(config_dir / "classification.json") or {}
 
     # Build users dict
     users: Dict[str, User] = {}
@@ -66,15 +86,11 @@ def load_controller_config(config_dir: Path) -> ControllerConfig:
             priority=env["priority"],
         )
 
-        # Build rules dict (Phase-1 and Phase-2 compatible)
+    # Build rules dict (Phase-1 and Phase-2 compatible)
     rules: Dict[str, RuleConfig] = {}
     for r in rules_raw:
-        # Name can be `name` (Phase 1) or `title` (your current JSON)
         rule_name = r.get("name") or r.get("title") or r["id"]
 
-        # Build parameters:
-        # 1) If explicit 'parameters' dict exists (Phase 1 style), use it.
-        # 2) Otherwise, derive parameters from flattened fields based on type.
         if "parameters" in r and isinstance(r["parameters"], dict):
             parameters = r["parameters"]
         else:
@@ -82,21 +98,13 @@ def load_controller_config(config_dir: Path) -> ControllerConfig:
             rtype = r["type"]
 
             if rtype == "account_minimum_balance":
-                # Your JSON:
-                #   account_id, threshold_amount, currency
                 params["account_id"] = r["account_id"]
-                # map threshold_amount -> minimum_balance expected by rules.py
                 params["minimum_balance"] = r.get("minimum_balance", r["threshold_amount"])
                 if "currency" in r:
                     params["currency"] = r["currency"]
 
             elif rtype == "envelope_budget_limit":
-                # Your JSON:
-                #   envelope_id, budget_amount, currency
                 params["envelope_id"] = r["envelope_id"]
-                # We support either:
-                #   - max_ratio (Phase 1 style), OR
-                #   - budget_amount (your new style)
                 if "max_ratio" in r:
                     params["max_ratio"] = r["max_ratio"]
                 if "budget_amount" in r:
@@ -105,25 +113,13 @@ def load_controller_config(config_dir: Path) -> ControllerConfig:
                     params["currency"] = r["currency"]
 
             elif rtype == "obligation_buffer_check":
-                # Your JSON:
-                #   lookahead_days, buffer_ratio
                 if "lookahead_days" in r:
                     params["lookahead_days"] = r["lookahead_days"]
                 if "buffer_ratio" in r:
                     params["buffer_ratio"] = r["buffer_ratio"]
 
-            # Fallback: copy any other fields into parameters
             for k, v in r.items():
-                if k not in {
-                    "id",
-                    "name",
-                    "title",
-                    "description",
-                    "type",
-                    "severity",
-                    "user_id",
-                    "parameters",
-                }:
+                if k not in { "id", "name", "title", "description", "type", "severity", "user_id", "parameters" }:
                     params.setdefault(k, v)
 
             parameters = params
@@ -136,8 +132,7 @@ def load_controller_config(config_dir: Path) -> ControllerConfig:
             severity=r["severity"],
         )
 
-
-    # Build obligations dict (NEW)
+    # Build obligations dict
     obligations: Dict[str, Obligation] = {}
     for o in obligations_raw:
         obligations[o["id"]] = Obligation(
